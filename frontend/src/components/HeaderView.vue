@@ -47,62 +47,64 @@ const handleLogin = (command?: string) => {
           <span class="logo-text">AI UniStudent</span>
         </div>
         
-        <!-- 导航区域 -->
+        <!-- 导航区域 - 调整结构确保横向排列 -->
         <nav class="nav-container">
-          <span 
-            class="nav-item" 
-            @click="router.push('/aiChat')"
-            :class="{ 'active': isActive('/aiChat') }"
-          >
-            <el-icon class="nav-icon">
-              <ChatDotRound />
-            </el-icon>
-            <span>AI助手</span>
-          </span>
-          
-          <span 
-            class="nav-item" 
-            @click="router.push('/calendar')"
-            :class="{ 'active': isActive('/calendar') }"
-          >
-            <el-icon class="nav-icon">
-              <Calendar />
-            </el-icon>
-            <span>日程</span>
-          </span>
-          
-          <span 
-            class="nav-item" 
-            @click="router.push('/budget')"
-            :class="{ 'active': isActive('/budget') }"
-          >
-            <el-icon class="nav-icon">
-              <Wallet />
-            </el-icon>
-            <span>预算</span>
-          </span>
-          
-          <span 
-            class="nav-item" 
-            @click="router.push('/health')"
-            :class="{ 'active': isActive('/health') }"
-          >
-            <el-icon class="nav-icon">
-              <FirstAidKit />
-            </el-icon>
-            <span>健康</span>
-          </span>
-          
-          <span 
-            class="nav-item" 
-            @click="router.push('/travel')"
-            :class="{ 'active': isActive('/travel') }"
-          >
-            <el-icon class="nav-icon">
-              <MapLocation />
-            </el-icon>
-            <span>旅游</span>
-          </span>
+          <div class="nav-list">
+            <span 
+              class="nav-item" 
+              @click="router.push('/aiChat')"
+              :class="{ 'active': isActive('/aiChat') }"
+            >
+              <el-icon class="nav-icon">
+                <ChatDotRound />
+              </el-icon>
+              <span>AI助手</span>
+            </span>
+            
+            <span 
+              class="nav-item" 
+              @click="router.push('/calendar')"
+              :class="{ 'active': isActive('/calendar') }"
+            >
+              <el-icon class="nav-icon">
+                <Calendar />
+              </el-icon>
+              <span>日程管理</span>
+            </span>
+            
+            <span 
+              class="nav-item" 
+              @click="router.push('/budget')"
+              :class="{ 'active': isActive('/budget') }"
+            >
+              <el-icon class="nav-icon">
+                <Wallet />
+              </el-icon>
+              <span>预算管理</span>
+            </span>
+            
+            <span 
+              class="nav-item" 
+              @click="router.push('/health')"
+              :class="{ 'active': isActive('/health') }"
+            >
+              <el-icon class="nav-icon">
+                <FirstAidKit />
+              </el-icon>
+              <span>健康助手</span>
+            </span>
+            
+            <span 
+              class="nav-item" 
+              @click="router.push('/travel')"
+              :class="{ 'active': isActive('/travel') }"
+            >
+              <el-icon class="nav-icon">
+                <MapLocation />
+              </el-icon>
+              <span>旅游助手</span>
+            </span>
+          </div>
         </nav>
         
         <!-- 登录按钮 -->
@@ -116,8 +118,6 @@ const handleLogin = (command?: string) => {
             <el-icon><User /></el-icon>
             <span>登录</span>
           </el-button>
-          
-
         </div>
       </div>
     </div>
@@ -143,6 +143,7 @@ const handleLogin = (command?: string) => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 20px; /* 增加元素间距，避免拥挤 */
   }
   
   // Logo区域 - 调整样式以适应svg logo
@@ -151,6 +152,7 @@ const handleLogin = (command?: string) => {
     align-items: center;
     cursor: pointer;
     transition: transform 0.2s ease;
+    flex-shrink: 0; /* 防止logo被挤压 */
     
     &:hover {
       transform: scale(1.02);
@@ -163,8 +165,17 @@ const handleLogin = (command?: string) => {
     }
   }
   
-  // 导航区域
+  // 导航区域 - 核心修改：确保横向排列
   .nav-container {
+    flex: 1; /* 让导航区域占满中间空间 */
+    .nav-list {
+      display: flex; /* 关键：设置flex实现横向排列 */
+      justify-content: center; /* 导航项居中对齐 */
+      align-items: center;
+      gap: 8px; /* 导航项之间的间距 */
+      width: 100%;
+    }
+    
     .nav-item {
       display: flex;
       align-items: center;
@@ -172,6 +183,8 @@ const handleLogin = (command?: string) => {
       border-radius: 6px;
       transition: all 0.2s ease;
       color: #606266;
+      cursor: pointer;
+      white-space: nowrap; /* 防止文字换行 */
       
       &:hover {
         background-color: #f5f7fa;
@@ -192,6 +205,7 @@ const handleLogin = (command?: string) => {
   
   // 登录区域
   .login-container {
+    flex-shrink: 0; /* 防止登录按钮被挤压 */
     .login-btn {
       display: flex;
       align-items: center;
@@ -233,11 +247,36 @@ const handleLogin = (command?: string) => {
   color: #86c8f1; /* 文本颜色 */
 }
 
-// 响应式设计
-@media (min-width: 768px) {
+// 响应式设计 - 适配小屏幕
+@media (max-width: 992px) {
   .page-header {
     .nav-container .nav-item {
-      padding: 8px 20px;
+      padding: 8px 10px;
+      
+      .nav-icon {
+        margin-right: 4px;
+        font-size: 16px;
+      }
+      
+      span {
+        font-size: 14px;
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    .logo-text {
+      font-size: 18px;
+    }
+    
+    .nav-container .nav-item span {
+      display: none; /* 小屏幕隐藏文字，只显示图标 */
+    }
+    
+    .nav-container .nav-item .nav-icon {
+      margin-right: 0;
     }
   }
 }

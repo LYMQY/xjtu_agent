@@ -327,7 +327,7 @@ const handleLogin = () => {
         localStorage.setItem('token', res.access_token);
         localStorage.setItem('username', loginForm.username);
         ElMessage.success('登录成功');
-        router.push('/LaiChat'); // 跳转到聊天页
+        router.push('/home'); // 跳转到首页仪表盘
       } catch (error) {
         console.error('登录失败', error);
       } finally {

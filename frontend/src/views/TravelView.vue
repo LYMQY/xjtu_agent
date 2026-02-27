@@ -1,4 +1,9 @@
 <template>
+    <header class="page-layout-header">
+      <div class="page-layout-row">
+        <HeaderView />
+      </div>
+    </header>
   <div class="travel-page">
     <!-- 顶部 Banner -->
     <div class="travel-banner">
@@ -223,7 +228,7 @@
           class="recommend-card"
           @click="quickPlan(place)"
         >
-          <div class="recommend-cover" :style="{ background: place.gradient }">
+          <div class="recommend-cover" :style="{ backgroundImage: `url(${place.image})` }">
             <span class="recommend-tag">{{ place.tag }}</span>
           </div>
           <div class="recommend-info">
@@ -241,6 +246,7 @@
 </template>
 
 <script setup lang="ts">
+import HeaderView from "@/components/CHeaderView.vue";
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { 
@@ -270,42 +276,42 @@ const recommendPlaces = ref([
     desc: '千年古都，兵马俑、大雁塔',
     tag: '历史人文',
     price: 1200,
-    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+    image: '/images/travel/xian.jpg'
   },
   {
     name: '成都',
     desc: '天府之国，美食与熊猫',
     tag: '休闲美食',
     price: 1000,
-    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
+    image: '/images/travel/chengdu.jpg'
   },
   {
     name: '杭州',
     desc: '西湖美景，江南水乡',
     tag: '自然风光',
     price: 1100,
-    gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
+    image: '/images/travel/hangzhou.jpg'
   },
   {
     name: '厦门',
     desc: '海滨城市，鼓浪屿',
     tag: '海滨度假',
     price: 1300,
-    gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
+    image: '/images/travel/xiamen.jpg'
   },
   {
     name: '重庆',
     desc: '山城雾都，火锅美食',
     tag: '美食之旅',
     price: 900,
-    gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
+    image: '/images/travel/chongqing.jpg'
   },
   {
     name: '大理',
     desc: '风花雪月，洱海苍山',
     tag: '文艺慢生活',
     price: 1100,
-    gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)'
+    image: '/images/travel/dali.jpg'
   }
 ])
 
@@ -823,6 +829,19 @@ onMounted(() => {
   .recommend-cover {
     height: 100px;
     position: relative;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.4) 100%);
+    }
     
     .recommend-tag {
       position: absolute;

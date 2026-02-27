@@ -1,4 +1,9 @@
 <template>
+    <header class="page-layout-header">
+      <div class="page-layout-row">
+        <HeaderView />
+      </div>
+    </header>
   <div class="health-page">
     <!-- 打卡状态卡片 -->
     <div class="checkin-header">
@@ -241,6 +246,7 @@
 </template>
 
 <script setup lang="ts">
+import HeaderView from "@/components/CHeaderView.vue";
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { 

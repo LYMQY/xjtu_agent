@@ -14,13 +14,22 @@ const router = createRouter({
       name: "LaiChat",
       component: () => import("@/views/LAiChatView.vue"),
     },
-    // 主页（暂时未用，若匹配到则跳转）
+    // 主页（未登录 Landing Page）
     {
       path: "/",
       name: "home",
       component: () => import("@/views/Dashboard.vue"),
       meta: {
         title: "主页",
+      },
+    },
+    // 登录后首页（仪表盘）
+    {
+      path: "/home",
+      name: "homePage",
+      component: () => import("@/views/HomeView.vue"),
+      meta: {
+        title: "首页",
       },
     },
     // 登录
