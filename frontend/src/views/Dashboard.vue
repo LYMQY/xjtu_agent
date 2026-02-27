@@ -8,7 +8,7 @@
     <!-- 顶部 Banner -->
     <div class="hero-section">
       <div class="hero-content">
-        <h1 class="hero-title">交小荣 Pro</h1>
+        <h1 class="hero-title">AI UniStudent</h1>
         <p class="hero-subtitle">你的智能校园生活助手</p>
         <div class="hero-stats">
           <div class="stat-item">
@@ -37,26 +37,28 @@
       <h2 class="section-title">功能服务</h2>
       <p class="section-desc">选择你想要使用的功能</p>
       
-      <div class="features-grid">
-        <div 
-          v-for="feature in features" 
-          :key="feature.id"
-          class="feature-card"
-          :class="{ 'featured': feature.featured }"
-          @click="navigateTo(feature.path)"
-        >
-          <div class="feature-icon" :style="{ background: feature.gradient }">
-            <el-icon :size="32"><component :is="feature.icon" /></el-icon>
-          </div>
-          <div class="feature-content">
-            <h3 class="feature-title">{{ feature.title }}</h3>
-            <p class="feature-desc">{{ feature.description }}</p>
-          </div>
-          <div class="feature-arrow">
-            <el-icon><ArrowRight /></el-icon>
-          </div>
-          <div class="feature-badge" v-if="feature.badge">{{ feature.badge }}</div>
-        </div>
+      <div class="features-carousel-wrapper">
+        <el-carousel height="550px" :autoplay="false" indicator-position="outside" arrow="always">
+          <el-carousel-item v-for="(group, index) in groupedFeatures" :key="index">
+            <div class="features-grid">
+              <div 
+                v-for="feature in group" 
+                :key="feature.id"
+                class="feature-card"
+                @click="navigateTo(feature.path)"
+              >
+                <p class="feature-example">{{ feature.example }}</p>
+                <div class="feature-title-container">
+                  <el-icon class="feature-icon"><component :is="feature.icon" /></el-icon>
+                  <h3 class="feature-title">{{ feature.title }}</h3>
+                </div>
+                <el-button class="feature-button" circle @click.stop="navigateTo(feature.path)">
+                  <el-icon><ArrowRight /></el-icon>
+                </el-button>
+              </div>
+            </div>
+          </el-carousel-item>
+        </el-carousel>
       </div>
     </div>
 
@@ -88,7 +90,8 @@
 
 <script setup lang="ts">
 import HeaderView from '@/components/HeaderView.vue'
-import { useRouter } from 'vue-router'
+import { useRouter } from 'vue-router';
+import { computed } from 'vue';
 import { 
   ChatDotRound, Calendar, Wallet, FirstAidKit, MapLocation, 
   Document, ShoppingBag, MagicStick, ArrowRight, InfoFilled,
@@ -97,73 +100,71 @@ import {
 
 const router = useRouter()
 
+// 将功能分组，每组3个，用于轮播
+const groupedFeatures = computed(() => {
+  const result = [];
+  for (let i = 0; i < features.length; i += 3) {
+    result.push(features.slice(i, i + 3));
+  }
+  return result;
+});
+
 // 功能卡片数据
 const features = [
   {
     id: 1,
     title: 'AI 智能助手',
-    description: '基于 DeepSeek 的智能问答，解答学习、生活各类问题',
     icon: 'ChatDotRound',
-    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    example: '“帮我总结一下《百年孤独》的主要内容和主题思想。”“用Python写一个快速排序算法。”',
     path: '/aiChat',
-    featured: true,
-    badge: '推荐'
   },
   {
     id: 2,
     title: '日程管理',
-    description: '课程表、考试、活动提醒，一目了然',
     icon: 'Calendar',
-    gradient: 'linear-gradient(135deg, #4FACFE 0%, #00F2FE 100%)',
+    example: '“提醒我明天下午三点在创新港有团队会议。”“下周五上午十点有高数考试。”',
     path: '/calendar',
-    badge: '必备'
   },
   {
     id: 3,
     title: '预算管理',
-    description: '记账、预算设置、消费分析，帮你管好钱袋子',
     icon: 'Wallet',
-    gradient: 'linear-gradient(135deg, #43E97B 0%, #38F9D7 100%)',
+    example: '“记一笔支出，今天午饭在康桥吃的刀削面，花了12元。”“查询我这个月的餐饮消费总额。”',
     path: '/budget'
   },
   {
     id: 4,
-    title: '健康打卡',
-    description: '每日健康记录、睡眠运动统计、养成好习惯',
+    title: '健康助手',
     icon: 'FirstAidKit',
-    gradient: 'linear-gradient(135deg, #FA709A 0%, #FEE140 100%)',
+    example: '“我今天晚上睡眠质量怎么样？”“记录我今天跑步了3公里。”',
     path: '/health'
   },
   {
     id: 5,
-    title: '旅游规划',
-    description: 'AI 智能生成行程，旅行从此简单',
+    title: '旅游助手',
     icon: 'MapLocation',
-    gradient: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+    example: '“我想周末去趟壶口瀑布，帮我规划一个两天的行程。”“推荐一些西安本地的美食。”',
     path: '/travel'
   },
   {
     id: 6,
-    title: '考试安排',
-    description: '考试时间记录、复习计划、倒计时提醒',
+    title: '考试助手',
     icon: 'Document',
-    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    example: '“我的大学物理期末考试在什么时候？帮我制定一个复习计划。”“距离四级考试还有多少天？”',
     path: '/exam'
   },
   {
     id: 7,
-    title: '二手市场',
-    description: '校园闲置物品交易，省钱又环保',
+    title: '校园市场',
     icon: 'ShoppingBag',
-    gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    example: '“我想卖一本九成新的《C++ Primer》，应该标价多少？”“求购一个二手自行车。”',
     path: '/market'
   },
   {
     id: 8,
-    title: '选课推荐',
-    description: '基于 RAG 的智能选课建议',
+    title: '选课助手',
     icon: 'Notebook',
-    gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    example: '“我是计算机科学专业的，下学期有什么推荐的选修课吗？”“王老师的《数据结构》这门课怎么样？”',
     path: '/aiChat'
   }
 ]
@@ -187,15 +188,21 @@ const navigateTo = (path: string) => {
 .dashboard-container {
   min-height: calc(100vh - 60px);
   background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
-  padding-bottom: 40px;
+  padding-bottom: 40px;  
+  
 }
 
 .hero-section {
   position: relative;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: linear-gradient(135deg, #232344 0%, #16213e 50%, #0f3460 100%);
   padding: 60px 40px;
   overflow: hidden;
+  height: calc(100vh - 60px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
 
 .hero-content {
   position: relative;
@@ -265,7 +272,7 @@ const navigateTo = (path: string) => {
       background: #667eea;
       top: -100px;
       right: -100px;
-      animation: float 8s ease-in-out infinite;
+      animation: float 12s ease-in-out infinite;
     }
     
     &.circle-2 {
@@ -274,7 +281,7 @@ const navigateTo = (path: string) => {
       background: #764ba2;
       bottom: -50px;
       left: -50px;
-      animation: float 6s ease-in-out infinite reverse;
+      animation: float 15s ease-in-out infinite reverse;
     }
     
     &.circle-3 {
@@ -284,19 +291,22 @@ const navigateTo = (path: string) => {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      animation: pulse 4s ease-in-out infinite;
+      animation: pulse 6s ease-in-out infinite;
     }
   }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-20px) rotate(5deg); }
+  0% { transform: translateY(0px) rotate(0deg); }
+  25% { transform: translateY(-20px) rotate(-5deg); }
+  50% { transform: translateY(-5px) rotate(5deg); }
+  75% { transform: translateY(-25px) rotate(10deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
 }
 
 @keyframes pulse {
   0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.1; }
-  50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.15; }
+  50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.2; }
 }
 
 .features-section {
@@ -320,99 +330,96 @@ const navigateTo = (path: string) => {
 }
 
 .features-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  padding: 0 40px; /* 为轮播箭头留出空间 */
+}
+
+.features-carousel-wrapper {
+  :deep(.el-carousel__item) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  :deep(.el-carousel__arrow) {
+    background-color: rgba(31, 45, 61, 0.5);
+    color: white;
+    &:hover {
+      background-color: rgba(31, 45, 61, 0.8);
+    }
+  }
+  :deep(.el-carousel__indicator.is-active button) {
+    background-color: #667eea;
+  }
 }
 
 .feature-card {
   position: relative;
   background: #fff;
   border-radius: 16px;
-  padding: 24px;
+  padding: 32px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  min-height: 160px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  justify-content: center;
   
   &:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     
-    .feature-arrow {
-      opacity: 1;
-      transform: translateX(0);
+    .feature-button {
+      transform: scale(1.1);
     }
   }
-  
-  &.featured {
-    grid-column: span 2;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    
-    .feature-title {
-      color: #fff;
-    }
-    
-    .feature-desc {
-      color: rgba(255, 255, 255, 0.8);
-    }
-    
-    .feature-icon {
-      background: rgba(255, 255, 255, 0.2) !important;
-    }
+
+  .feature-example {
+    font-size: 18px;
+    color: #888;
+    margin: 0;
+    line-height: 1.6;
+    text-align: center;
   }
   
-  .feature-icon {
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
+  .feature-title-container {
+    position: absolute;
+    left: 32px;
+    bottom: 28px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    color: #fff;
-    margin-bottom: 16px;
+    gap: 8px;
   }
-  
-  .feature-content {
-    flex: 1;
+
+  .feature-icon {
+    font-size: 20px;
+    color: #333;
   }
   
   .feature-title {
     font-size: 18px;
     font-weight: 600;
-    color: #1a1a2e;
-    margin-bottom: 8px;
+    color: #000;
+    margin: 0;
   }
   
-  .feature-desc {
-    font-size: 14px;
-    color: #666;
-    line-height: 1.5;
-  }
-  
-  .feature-arrow {
+  .feature-button {
     position: absolute;
-    right: 20px;
-    top: 50%;
-    transform: translateX(10px);
-    translate: y(-50%);
-    color: #667eea;
-    opacity: 0;
-    transition: all 0.3s ease;
-  }
-  
-  .feature-badge {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    padding: 4px 10px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #fff;
-    font-size: 12px;
-    border-radius: 12px;
-    font-weight: 500;
+    right: 32px;
+    bottom: 20px;
+    background-color: #fff;
+    border: 1px solid #000;
+    color: #000;
+    transition: transform 0.2s ease;
+
+    &:hover {
+      background-color: #f8f8f8;
+      border-color: #000;
+      color: #000;
+    }
   }
 }
 
@@ -478,19 +485,6 @@ const navigateTo = (path: string) => {
 }
 
 @media (max-width: 1200px) {
-  .features-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 900px) {
-  .features-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .feature-card.featured {
-    grid-column: span 2;
-  }
 }
 
 @media (max-width: 600px) {
@@ -510,12 +504,6 @@ const navigateTo = (path: string) => {
     }
   }
   
-  .features-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .feature-card.featured {
-    grid-column: span 1;
-  }
+  /* The responsive styles for features-grid are no longer needed as it's a single column. */
 }
 </style>

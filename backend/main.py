@@ -3,13 +3,13 @@
 FastAPI 交小荣智能教务后端
 """
 
-from models import DBUser, Base, DBSchedule
-from sqlalchemy import DateTime, create_engine, Column, String, Boolean, Text, Integer, func
+from models import DBUser, Base, DBSchedule, DBExpense, DBBudget, DBHealthCheckin, DBTrip
+from sqlalchemy import DateTime, create_engine, Column, String, Boolean, Text, Integer, Float, func
 from sqlalchemy.orm import sessionmaker, Session
 from config import config
 from crypto_utils import crypto 
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 import logging
 from scheduler import start_scheduler
@@ -67,7 +67,6 @@ class DatabaseInitializer:
 # 立即初始化数据库（在任何导入前）
 DatabaseInitializer.initialize()
 
-
 import json
 import time
 import uuid
@@ -80,7 +79,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.responses import StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, Field
 import redis
 from passlib.context import CryptContext
 from agents.demo_rag import EhallAgent  
@@ -142,6 +141,97 @@ class ScheduleResponse(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+# ---------- 预算管理 Pydantic 模型 ----------
+class ExpenseCreate(BaseModel):
+    amount: float = Field(..., gt=0, description="金额")
+    category: str = Field(..., description="分类: food/transport/shopping/entertainment/study/living/other")
+    description: Optional[str] = Field(None, description="描述")
+    date: str = Field(..., description="日期 YYYY-MM-DD")
+
+class ExpenseResponse(BaseModel):
+    id: str
+    amount: float
+    category: str
+    description: Optional[str]
+    date: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class BudgetSet(BaseModel):
+    total_budget: float = Field(..., gt=0, description="月预算金额")
+    month: str = Field(..., description="月份 YYYY-MM")
+
+class BudgetStats(BaseModel):
+    total_budget: float
+    total_spent: float
+    remaining: float
+    percentage: float
+    category_breakdown: dict
+
+# 消费分类映射
+EXPENSE_CATEGORIES = {
+    "food": "餐饮",
+    "transport": "交通",
+    "shopping": "购物",
+    "entertainment": "娱乐",
+    "study": "学习",
+    "living": "住宿",
+    "other": "其他"
+}
+
+# ---------- 健康打卡 Pydantic 模型 ----------
+class HealthCheckinCreate(BaseModel):
+    date: str = Field(..., description="日期 YYYY-MM-DD")
+    sleep_time: Optional[str] = Field(None, description="入睡时间 HH:MM")
+    wake_time: Optional[str] = Field(None, description="起床时间 HH:MM")
+    exercise: str = Field("none", description="运动状态: none/light/medium/heavy")
+    steps: int = Field(0, ge=0, description="步数")
+    health_status: str = Field("good", description="健康状况: excellent/good/minor/bad")
+    weight: Optional[float] = Field(None, gt=0, description="体重 kg")
+    remark: Optional[str] = Field(None, description="备注")
+
+class HealthStats(BaseModel):
+    total_checkins: int
+    consecutive_days: int
+    avg_sleep: float
+    avg_steps: float
+    exercise_rate: float
+    health_score: int
+
+# 健康分类映射
+HEALTH_STATUS_MAP = {
+    "excellent": "非常健康",
+    "good": "健康",
+    "minor": "轻微不适",
+    "bad": "身体不适"
+}
+
+EXERCISE_MAP = {
+    "none": "未运动",
+    "light": "轻度运动",
+    "medium": "中度运动",
+    "heavy": "剧烈运动"
+}
+
+# ---------- 旅游规划 Pydantic 模型 ----------
+class TripCreate(BaseModel):
+    destination: str = Field(..., description="目的地")
+    days: int = Field(..., ge=1, le=30, description="天数")
+    people: int = Field(1, ge=1, le=20, description="人数")
+    budget: float = Field(..., gt=0, description="预算（元）")
+    style: str = Field("comfortable", description="出行方式")
+    start_date: Optional[str] = Field(None, description="出发日期 YYYY-MM-DD")
+    itinerary: Optional[List[Dict]] = Field(None, description="行程详情")
+
+class TripGenerateRequest(BaseModel):
+    destination: str
+    days: int = Field(..., ge=1, le=30)
+    budget: float
+    style: str = "comfortable"
+    people: int = 1
 
 # ---------- 工具函数（密码、Token、数据库操作） ----------
 def get_user_db():
@@ -667,4 +757,648 @@ def get_last_schedule_update(
     return {
         "timestamp": str(int(timestamp)),  # 转为整数时间戳字符串
         "user_id": current_user.username
+    }
+
+# ==================== 预算管理 API ====================
+
+@app.get("/api/expenses/", response_model=list)
+def get_expenses(
+    start_date: Optional[str] = Query(None, description="开始日期 YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, description="结束日期 YYYY-MM-DD"),
+    category: Optional[str] = Query(None, description="分类筛选"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """获取当前用户的消费记录"""
+    query = db.query(DBExpense).filter(DBExpense.user_id == current_user.username)
+    
+    # 日期筛选
+    if start_date:
+        query = query.filter(DBExpense.date >= start_date)
+    if end_date:
+        query = query.filter(DBExpense.date <= end_date)
+    # 分类筛选
+    if category:
+        query = query.filter(DBExpense.category == category)
+    
+    # 分页
+    offset = (page - 1) * page_size
+    expenses = query.order_by(DBExpense.date.desc()).offset(offset).limit(page_size).all()
+    
+    return [
+        {
+            "id": e.id,
+            "amount": e.amount / 100,  # 转换为元
+            "category": e.category,
+            "category_name": EXPENSE_CATEGORIES.get(e.category, e.category),
+            "description": e.description,
+            "date": e.date,
+            "created_at": e.created_at.isoformat() if e.created_at else None
+        } for e in expenses
+    ]
+
+@app.post("/api/expenses/", response_model=dict)
+def create_expense(
+    expense: ExpenseCreate,
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """添加新的消费记录"""
+    # 金额转为分存储
+    new_expense = DBExpense(
+        user_id=current_user.username,
+        amount=int(expense.amount * 100),
+        category=expense.category,
+        description=expense.description,
+        date=expense.date
+    )
+    db.add(new_expense)
+    db.commit()
+    db.refresh(new_expense)
+    
+    return {
+        "id": new_expense.id,
+        "amount": new_expense.amount / 100,
+        "category": new_expense.category,
+        "description": new_expense.description,
+        "date": new_expense.date,
+        "message": "添加成功"
+    }
+
+@app.delete("/api/expenses/{expense_id}", response_model=dict)
+def delete_expense(
+    expense_id: str,
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """删除消费记录"""
+    expense = db.query(DBExpense).filter(
+        DBExpense.id == expense_id,
+        DBExpense.user_id == current_user.username
+    ).first()
+    
+    if not expense:
+        raise HTTPException(status_code=404, detail="记录不存在或无权访问")
+    
+    db.delete(expense)
+    db.commit()
+    return {"message": "删除成功", "id": expense_id}
+
+@app.get("/api/expenses/stats/", response_model=BudgetStats)
+def get_expense_stats(
+    month: Optional[str] = Query(None, description="月份 YYYY-MM，默认当月"),
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """获取消费统计"""
+    if not month:
+        month = datetime.now().strftime("%Y-%m")
+    
+    # 获取当月预算
+    budget = db.query(DBBudget).filter(
+        DBBudget.user_id == current_user.username,
+        DBBudget.month == month
+    ).first()
+    
+    total_budget = budget.total_budget / 100 if budget else 1500
+    start_date = f"{month}-01"
+    end_date = f"{month}-31"
+    
+    # 获取当月消费
+    expenses = db.query(DBExpense).filter(
+        DBExpense.user_id == current_user.username,
+        DBExpense.date >= start_date,
+        DBExpense.date <= end_date
+    ).all()
+    
+    total_spent = sum(e.amount for e in expenses) / 100
+    
+    # 分类统计
+    category_breakdown = {}
+    for e in expenses:
+        cat = e.category
+        cat_name = EXPENSE_CATEGORIES.get(cat, cat)
+        category_breakdown[cat_name] = category_breakdown.get(cat_name, 0) + e.amount / 100
+    
+    return BudgetStats(
+        total_budget=round(total_budget, 2),
+        total_spent=round(total_spent, 2),
+        remaining=round(total_budget - total_spent, 2),
+        percentage=round(total_spent / total_budget * 100, 1) if total_budget > 0 else 0,
+        category_breakdown=category_breakdown
+    )
+
+@app.get("/api/budget/", response_model=dict)
+def get_budget(
+    month: Optional[str] = Query(None, description="月份 YYYY-MM，默认当月"),
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """获取当前用户预算"""
+    if not month:
+        month = datetime.now().strftime("%Y-%m")
+    
+    budget = db.query(DBBudget).filter(
+        DBBudget.user_id == current_user.username,
+        DBBudget.month == month
+    ).first()
+    
+    return {
+        "total_budget": budget.total_budget / 100 if budget else 1500,
+        "month": month
+    }
+
+@app.post("/api/budget/", response_model=dict)
+def set_budget(
+    budget: BudgetSet,
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """设置月度预算"""
+    existing = db.query(DBBudget).filter(
+        DBBudget.user_id == current_user.username,
+        DBBudget.month == budget.month
+    ).first()
+    
+    if existing:
+        existing.total_budget = int(budget.total_budget * 100)
+    else:
+        new_budget = DBBudget(
+            user_id=current_user.username,
+            total_budget=int(budget.total_budget * 100),
+            month=budget.month
+        )
+        db.add(new_budget)
+    
+    db.commit()
+    return {"message": "预算设置成功", "month": budget.month, "total_budget": budget.total_budget}
+
+# ==================== 健康打卡 API ====================
+
+@app.get("/api/health/checkins/", response_model=list)
+def get_health_checkins(
+    start_date: Optional[str] = Query(None, description="开始日期 YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, description="结束日期 YYYY-MM-DD"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(31, ge=1, le=100),
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """获取当前用户的健康打卡记录"""
+    query = db.query(DBHealthCheckin).filter(
+        DBHealthCheckin.user_id == current_user.username
+    )
+    
+    if start_date:
+        query = query.filter(DBHealthCheckin.date >= start_date)
+    if end_date:
+        query = query.filter(DBHealthCheckin.date <= end_date)
+    
+    offset = (page - 1) * page_size
+    checkins = query.order_by(DBHealthCheckin.date.desc()).offset(offset).limit(page_size).all()
+    
+    return [
+        {
+            "id": c.id,
+            "date": c.date,
+            "sleep_time": c.sleep_time,
+            "wake_time": c.wake_time,
+            "sleep_duration": c.sleep_duration,
+            "exercise": c.exercise,
+            "exercise_text": EXERCISE_MAP.get(c.exercise, c.exercise),
+            "steps": c.steps,
+            "health_status": c.health_status,
+            "health_status_text": HEALTH_STATUS_MAP.get(c.health_status, c.health_status),
+            "weight": c.weight,
+            "remark": c.remark,
+            "created_at": c.created_at.isoformat() if c.created_at else None
+        } for c in checkins
+    ]
+
+@app.post("/api/health/checkins/", response_model=dict)
+def create_or_update_health_checkin(
+    checkin: HealthCheckinCreate,
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """添加或更新健康打卡记录"""
+    # 计算睡眠时长
+    sleep_duration = None
+    if checkin.sleep_time and checkin.wake_time:
+        try:
+            sleep_t = datetime.strptime(checkin.sleep_time, "%H:%M")
+            wake_t = datetime.strptime(checkin.wake_time, "%H:%M")
+            diff = (wake_t - sleep_t).total_seconds() / 3600
+            if diff < 0:
+                diff += 24  # 跨天
+            sleep_duration = round(diff, 1)
+        except:
+            pass
+    
+    # 检查是否已存在
+    existing = db.query(DBHealthCheckin).filter(
+        DBHealthCheckin.user_id == current_user.username,
+        DBHealthCheckin.date == checkin.date
+    ).first()
+    
+    if existing:
+        # 更新
+        existing.sleep_time = checkin.sleep_time
+        existing.wake_time = checkin.wake_time
+        existing.sleep_duration = sleep_duration
+        existing.exercise = checkin.exercise
+        existing.steps = checkin.steps
+        existing.health_status = checkin.health_status
+        existing.weight = checkin.weight
+        existing.remark = checkin.remark
+        db.commit()
+        db.refresh(existing)
+        return {"id": existing.id, "date": existing.date, "message": "更新成功"}
+    else:
+        # 新增
+        new_checkin = DBHealthCheckin(
+            user_id=current_user.username,
+            date=checkin.date,
+            sleep_time=checkin.sleep_time,
+            wake_time=checkin.wake_time,
+            sleep_duration=sleep_duration,
+            exercise=checkin.exercise,
+            steps=checkin.steps,
+            health_status=checkin.health_status,
+            weight=checkin.weight,
+            remark=checkin.remark
+        )
+        db.add(new_checkin)
+        db.commit()
+        db.refresh(new_checkin)
+        return {"id": new_checkin.id, "date": new_checkin.date, "message": "打卡成功"}
+
+@app.get("/api/health/checkins/{date}", response_model=dict)
+def get_health_checkin_by_date(
+    date: str,
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """获取指定日期的打卡记录"""
+    checkin = db.query(DBHealthCheckin).filter(
+        DBHealthCheckin.user_id == current_user.username,
+        DBHealthCheckin.date == date
+    ).first()
+    
+    if not checkin:
+        return {"date": date, "checked": False}
+    
+    return {
+        "id": checkin.id,
+        "date": checkin.date,
+        "sleep_time": checkin.sleep_time,
+        "wake_time": checkin.wake_time,
+        "sleep_duration": checkin.sleep_duration,
+        "exercise": checkin.exercise,
+        "steps": checkin.steps,
+        "health_status": checkin.health_status,
+        "weight": checkin.weight,
+        "remark": checkin.remark,
+        "checked": True
+    }
+
+@app.delete("/api/health/checkins/{date}", response_model=dict)
+def delete_health_checkin(
+    date: str,
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """删除打卡记录"""
+    checkin = db.query(DBHealthCheckin).filter(
+        DBHealthCheckin.user_id == current_user.username,
+        DBHealthCheckin.date == date
+    ).first()
+    
+    if not checkin:
+        raise HTTPException(status_code=404, detail="记录不存在")
+    
+    db.delete(checkin)
+    db.commit()
+    return {"message": "删除成功", "date": date}
+
+@app.get("/api/health/stats/", response_model=HealthStats)
+def get_health_stats(
+    days: int = Query(30, ge=7, le=90, description="统计天数"),
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """获取健康统计数据"""
+    end_date = datetime.now().strftime("%Y-%m-%d")
+    start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    
+    checkins = db.query(DBHealthCheckin).filter(
+        DBHealthCheckin.user_id == current_user.username,
+        DBHealthCheckin.date >= start_date,
+        DBHealthCheckin.date <= end_date
+    ).all()
+    
+    total_checkins = len(checkins)
+    
+    # 计算连续打卡天数
+    consecutive_days = 0
+    check_dates = set(c.date for c in checkins)
+    current_date = datetime.now()
+    while True:
+        date_str = current_date.strftime("%Y-%m-%d")
+        if date_str in check_dates:
+            consecutive_days += 1
+            current_date -= timedelta(days=1)
+        else:
+            break
+    
+    # 计算平均值
+    sleep_values = [c.sleep_duration for c in checkins if c.sleep_duration]
+    avg_sleep = round(sum(sleep_values) / len(sleep_values), 1) if sleep_values else 0
+    
+    steps_values = [c.steps for c in checkins if c.steps]
+    avg_steps = round(sum(steps_values) / len(steps_values)) if steps_values else 0
+    
+    # 运动率
+    exercised = len([c for c in checkins if c.exercise != "none"])
+    exercise_rate = round(exercised / total_checkins * 100, 1) if total_checkins > 0 else 0
+    
+    # 健康评分
+    health_score = 60
+    if avg_sleep >= 7:
+        health_score += 10
+    if avg_steps >= 6000:
+        health_score += 10
+    if exercise_rate >= 50:
+        health_score += 10
+    if total_checkins >= days * 0.8:
+        health_score += 10
+    
+    return HealthStats(
+        total_checkins=total_checkins,
+        consecutive_days=consecutive_days,
+        avg_sleep=avg_sleep,
+        avg_steps=avg_steps,
+        exercise_rate=exercise_rate,
+        health_score=min(100, health_score)
+    )
+
+@app.get("/api/health/calendar/", response_model=dict)
+def get_health_calendar(
+    year: int = Query(None, description="年份"),
+    month: int = Query(None, description="月份"),
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """获取某年月的打卡日历数据"""
+    if not year:
+        year = datetime.now().year
+    if not month:
+        month = datetime.now().month
+    
+    start_date = f"{year}-{month:02d}-01"
+    if month == 12:
+        end_date = f"{year + 1}-01-01"
+    else:
+        end_date = f"{year}-{month + 1:02d}-01"
+    
+    checkins = db.query(DBHealthCheckin).filter(
+        DBHealthCheckin.user_id == current_user.username,
+        DBHealthCheckin.date >= start_date,
+        DBHealthCheckin.date < end_date
+    ).all()
+    
+    calendar_data = {}
+    for c in checkins:
+        calendar_data[c.date] = {
+            "checked": True,
+            "health_status": c.health_status,
+            "exercise": c.exercise,
+            "steps": c.steps
+        }
+    
+    return {"year": year, "month": month, "data": calendar_data}
+
+# ==================== 旅游规划 API ====================
+
+@app.get("/api/trips/", response_model=dict)
+def get_trips(
+    status: Optional[str] = Query(None, description="状态筛选"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """获取当前用户的旅行计划列表"""
+    import json
+    
+    query = db.query(DBTrip).filter(DBTrip.user_id == current_user.username)
+    
+    if status:
+        query = query.filter(DBTrip.status == status)
+    
+    total = query.count()
+    offset = (page - 1) * page_size
+    trips = query.order_by(DBTrip.created_at.desc()).offset(offset).limit(page_size).all()
+    
+    return {
+        "trips": [
+            {
+                "id": t.id,
+                "destination": t.destination,
+                "days": t.days,
+                "people": t.people,
+                "budget": t.budget / 100,
+                "style": t.style,
+                "start_date": t.start_date,
+                "end_date": t.end_date,
+                "status": t.status,
+                "cover_image": t.cover_image,
+                "created_at": t.created_at.isoformat() if t.created_at else None
+            } for t in trips
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size
+    }
+
+@app.post("/api/trips/", response_model=dict)
+def create_trip(
+    trip: TripCreate,
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """创建新的旅行计划"""
+    import json
+    
+    end_date = None
+    if trip.start_date:
+        try:
+            start = datetime.strptime(trip.start_date, "%Y-%m-%d")
+            end_date = (start + timedelta(days=trip.days - 1)).strftime("%Y-%m-%d")
+        except:
+            pass
+    
+    itinerary_json = None
+    if trip.itinerary:
+        itinerary_json = json.dumps(trip.itinerary)
+    
+    new_trip = DBTrip(
+        user_id=current_user.username,
+        destination=trip.destination,
+        days=trip.days,
+        people=trip.people,
+        budget=int(trip.budget * 100),
+        style=trip.style,
+        start_date=trip.start_date,
+        end_date=end_date,
+        itinerary=itinerary_json,
+        status="planning"
+    )
+    db.add(new_trip)
+    db.commit()
+    db.refresh(new_trip)
+    
+    return {
+        "id": new_trip.id,
+        "destination": new_trip.destination,
+        "days": new_trip.days,
+        "message": "旅行计划创建成功"
+    }
+
+@app.get("/api/trips/{trip_id}", response_model=dict)
+def get_trip_detail(
+    trip_id: str,
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """获取旅行计划详情"""
+    import json
+    
+    trip = db.query(DBTrip).filter(
+        DBTrip.id == trip_id,
+        DBTrip.user_id == current_user.username
+    ).first()
+    
+    if not trip:
+        raise HTTPException(status_code=404, detail="旅行计划不存在")
+    
+    itinerary = None
+    if trip.itinerary:
+        try:
+            itinerary = json.loads(trip.itinerary)
+        except:
+            pass
+    
+    return {
+        "id": trip.id,
+        "destination": trip.destination,
+        "days": trip.days,
+        "people": trip.people,
+        "budget": trip.budget / 100,
+        "style": trip.style,
+        "start_date": trip.start_date,
+        "end_date": trip.end_date,
+        "status": trip.status,
+        "itinerary": itinerary,
+        "cover_image": trip.cover_image,
+        "created_at": trip.created_at.isoformat() if trip.created_at else None
+    }
+
+@app.put("/api/trips/{trip_id}", response_model=dict)
+def update_trip(
+    trip_id: str,
+    trip_update: TripCreate,
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """更新旅行计划"""
+    import json
+    
+    trip = db.query(DBTrip).filter(
+        DBTrip.id == trip_id,
+        DBTrip.user_id == current_user.username
+    ).first()
+    
+    if not trip:
+        raise HTTPException(status_code=404, detail="旅行计划不存在")
+    
+    trip.destination = trip_update.destination
+    trip.days = trip_update.days
+    trip.people = trip_update.people
+    trip.budget = int(trip_update.budget * 100)
+    trip.style = trip_update.style
+    
+    if trip_update.start_date:
+        try:
+            trip.start_date = trip_update.start_date
+            trip.end_date = (datetime.strptime(trip_update.start_date, "%Y-%m-%d") + timedelta(days=trip_update.days - 1)).strftime("%Y-%m-%d")
+        except:
+            pass
+    
+    if trip_update.itinerary:
+        trip.itinerary = json.dumps(trip_update.itinerary)
+    
+    db.commit()
+    return {"message": "更新成功", "id": trip_id}
+
+@app.delete("/api/trips/{trip_id}", response_model=dict)
+def delete_trip(
+    trip_id: str,
+    db: Session = Depends(get_user_db),
+    current_user: DBUser = Depends(get_current_user)
+):
+    """删除旅行计划"""
+    trip = db.query(DBTrip).filter(
+        DBTrip.id == trip_id,
+        DBTrip.user_id == current_user.username
+    ).first()
+    
+    if not trip:
+        raise HTTPException(status_code=404, detail="旅行计划不存在")
+    
+    db.delete(trip)
+    db.commit()
+    return {"message": "删除成功", "id": trip_id}
+
+@app.post("/api/trips/generate", response_model=dict)
+def generate_itinerary(
+    request: TripGenerateRequest
+):
+    """AI 生成行程规划"""
+    activities_pool = [
+        {"time": "08:00", "name": "酒店早餐", "desc": "享用早餐", "cost": 0, "duration": "1小时"},
+        {"time": "09:00", "name": "景点游览", "desc": "参观主要景点", "cost": 5000, "duration": "3小时"},
+        {"time": "12:00", "name": "午餐", "desc": "当地特色美食", "cost": 3000, "duration": "1小时"},
+        {"time": "14:00", "name": "下午活动", "desc": "继续游览", "cost": 3000, "duration": "2小时"},
+        {"time": "17:00", "name": "自由活动", "desc": "购物或休息", "cost": 0, "duration": "2小时"},
+        {"time": "19:00", "name": "晚餐", "desc": "特色晚餐", "cost": 4000, "duration": "1.5小时"},
+        {"time": "21:00", "name": "返回酒店", "desc": "休息", "cost": 0, "duration": "30分钟"}
+    ]
+    
+    themes = ["历史文化探秘", "美食之旅", "自然风光欣赏", "城市漫步", "休闲度假"]
+    itinerary = []
+    
+    for i in range(request.days):
+        day_activities = activities_pool[:4 + (i % 3)]
+        total_cost = sum(a["cost"] for a in day_activities)
+        
+        itinerary.append({
+            "day": i + 1,
+            "theme": themes[i % len(themes)],
+            "activities": day_activities,
+            "meals": {"breakfast": "酒店自助", "lunch": "当地美食", "dinner": "特色餐厅"},
+            "tips": "注意保管好个人物品" if i == 0 else None,
+            "dayCost": total_cost
+        })
+    
+    return {
+        "destination": request.destination,
+        "days": request.days,
+        "people": request.people,
+        "budget": request.budget,
+        "style": request.style,
+        "itinerary": itinerary,
+        "totalCost": sum(d["dayCost"] for d in itinerary)
     }

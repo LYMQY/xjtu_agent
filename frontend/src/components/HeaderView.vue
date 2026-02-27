@@ -182,7 +182,7 @@ const handleLogin = (command?: string) => {
       padding: 8px 15px;
       border-radius: 6px;
       transition: all 0.2s ease;
-      color: #606266;
+      color: #000000;
       cursor: pointer;
       white-space: nowrap; /* 防止文字换行 */
       

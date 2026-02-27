@@ -337,7 +337,7 @@ const loadStats = () => {
 
 .welcome-section {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
+  border-radius: 0px;
   padding: 32px;
   margin-bottom: 24px;
   color: #fff;
@@ -509,7 +509,7 @@ const loadStats = () => {
 .ai-section,
 .quick-section,
 .schedule-preview {
-  background: #fff;
+  background: #F8FAFC;
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
@@ -573,6 +573,17 @@ const loadStats = () => {
   gap: 12px;
 }
 
+.quick-func-wrapper {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  display: flex;
+  gap: 12px;
+  padding-bottom: 10px;
+  width: 100%;
+  overflow: auto;
+  scroll-behavior: smooth;
+}
+
 .quick-func {
   display: flex;
   flex-direction: column;
@@ -581,6 +592,7 @@ const loadStats = () => {
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s;
+  scroll-snap-align: start;
   
   &:hover {
     background: #f5f7fa;
@@ -625,7 +637,7 @@ const loadStats = () => {
   display: flex;
   align-items: center;
   padding: 12px;
-  background: #F8FAFC;
+  background: #fff;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s;
