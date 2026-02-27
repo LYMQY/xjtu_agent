@@ -102,6 +102,9 @@ class Config:
     # 服务器配置
     HOST: str = os.getenv('HOST', "127.0.0.1")
     PORT: int = int(os.getenv('PORT', 8000))
+
+    # 地图配置
+    AMAP_KEY: str = os.getenv('AMAP_KEY', '')
         
     @classmethod
     def get_redis_config(cls) -> dict:

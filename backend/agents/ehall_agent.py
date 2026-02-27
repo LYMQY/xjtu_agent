@@ -10,6 +10,7 @@ backend_dir = os.path.dirname(current_dir)
 sys.path.append(backend_dir)
 
 import pandas as pd
+from langchain_deepseek import ChatDeepSeek
 from langchain_openai import ChatOpenAI
 from langchain.agents import create_openai_tools_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -17,6 +18,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.document_loaders import CSVLoader
+# from langchain_huggingface import HuggingFaceEmbeddings
 from config import config
 
 from tools.ehall_tools import (
@@ -49,12 +51,13 @@ class EhallAgent:
         self.agent = self._create_agent()
         self.agent_executor = self._create_agent_executor(verbose)
     
-    def _initialize_llm(self) -> ChatOpenAI:
+    def _initialize_llm(self) -> ChatDeepSeek:
         """初始化大语言模型"""
-        return ChatOpenAI(
-            model="gpt-4.1",
+        return ChatDeepSeek(
+            model="deepseek-chat",
             temperature=0,
-            api_key=config.OPENAI_API_KEY,
+            api_key=config.DEEPSEEK_API_KEY,
+            base_url=config.DEEPSEEK_BASE_URL,
         )
     
     def _get_tools(self) -> list:
@@ -103,6 +106,16 @@ class EhallAgent:
             
             # 创建向量存储
             embeddings = OpenAIEmbeddings(api_key=config.OPENAI_API_KEY)
+            # model_name = "BAAI/bge-small-zh-v1.5"
+            # model_kwargs = {'device': 'cpu'} # 如果你有 GPU，可以改为 'cuda'
+            # encode_kwargs = {'normalize_embeddings': True} # 归一化以获得更好的余弦相似度
+            
+            # embeddings = HuggingFaceEmbeddings(
+            #     model_name=model_name,
+            #     model_kwargs=model_kwargs,
+            #     encode_kwargs=encode_kwargs
+            # )
+
             vectorstore = FAISS.from_documents(texts, embeddings)
             
             return vectorstore

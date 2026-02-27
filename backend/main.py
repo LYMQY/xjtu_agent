@@ -82,7 +82,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, field_validator, Field
 import redis
 from passlib.context import CryptContext
-from agents.demo_rag import EhallAgent  
+from agents.ehall_agent import EhallAgent
+from agents.AgentRouter import AgentRouter  
 from thread_local import set_current_username, get_current_username
 
 
@@ -353,6 +354,7 @@ try:
     # 初始化LangChain的DeepSeek聊天模型
     kb_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend/data", "通识选课2.csv")
     ehall_agent = EhallAgent(verbose=False, knowledge_base_path=kb_path)
+    agent_router = AgentRouter()
     logger.info("LangChain DeepSeek模型初始化成功")
 except Exception as e:
     logger.error(f"LangChain初始化失败: {e}")
@@ -588,8 +590,20 @@ async def chat_endpoint(request: ChatRequest):
     # 获取对话历史
     history = await get_conversation_history(user_id, session_id)
     
-    # 生成AI响应
-    ai_response = await generate_ai_response(history)
+    # 转换历史消息格式
+    chat_history = []
+    for msg in history[-MAX_HISTORY_MESSAGES:]:
+        if msg["role"] == "user":
+            chat_history.append({"role": "user", "content": msg["content"]})
+        elif msg["role"] == "assistant":
+            chat_history.append({"role": "assistant", "content": msg["content"]})
+    
+    # 使用AgentRouter生成AI响应
+    ai_response = agent_router.route(
+        user_message=user_message,
+        user_id=user_id,
+        chat_history=chat_history
+    )
     
     # 保存AI响应
     ai_msg = ChatMessage(role="assistant", content=ai_response, timestamp=time.time())
