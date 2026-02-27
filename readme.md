@@ -3,7 +3,17 @@
 2. [How to run](#how-to-run)
 3. [Thanks](#thanks)
 
-## **XJTU 交小荣智能学生教务平台**
+## **生活帮手 Agent**
+### 个性化需求--- 学生的贴心助手
+·课程提醒
+已实现
+·课程评价
+·预算管理
+·健康打卡
+·旅行规划
+模拟请求，爬取相关的帖子，机票火车价格等
+
+
 <p align="center">
     <img alt="Node version" src="https://img.shields.io/static/v1?label=node&message=%20%3E=22&logo=node.js&color=2334D058" />
       <a href="https://github.com/alanyagger/xjtu_agent/blob/main/readme.md"><img src="https://img.shields.io/badge/lang-English-blue.svg" alt="English"></a>

@@ -44,7 +44,7 @@ const handleLogin = (command?: string) => {
             fit="contain"
             alt="交小荣Logo"
           />
-          <span class="logo-text">交小荣</span>
+          <span class="logo-text">AI UniStudent</span>
         </div>
         
         <!-- 导航区域 -->
