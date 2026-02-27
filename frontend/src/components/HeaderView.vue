@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useRouter, useRoute } from "vue-router";
-import { ChatDotRound, User, ArrowDown } from "@element-plus/icons-vue";
+import { ChatDotRound, User, ArrowDown, Wallet, Calendar, FirstAidKit, MapLocation } from "@element-plus/icons-vue";
 import { ref } from "vue";
 import { ElMessage } from "element-plus";
 
@@ -51,13 +51,57 @@ const handleLogin = (command?: string) => {
         <nav class="nav-container">
           <span 
             class="nav-item" 
-            @click="navClickHandle"
+            @click="router.push('/aiChat')"
             :class="{ 'active': isActive('/aiChat') }"
           >
             <el-icon class="nav-icon">
               <ChatDotRound />
             </el-icon>
-            <span>AI学生教务助手</span>
+            <span>AI助手</span>
+          </span>
+          
+          <span 
+            class="nav-item" 
+            @click="router.push('/calendar')"
+            :class="{ 'active': isActive('/calendar') }"
+          >
+            <el-icon class="nav-icon">
+              <Calendar />
+            </el-icon>
+            <span>日程</span>
+          </span>
+          
+          <span 
+            class="nav-item" 
+            @click="router.push('/budget')"
+            :class="{ 'active': isActive('/budget') }"
+          >
+            <el-icon class="nav-icon">
+              <Wallet />
+            </el-icon>
+            <span>预算</span>
+          </span>
+          
+          <span 
+            class="nav-item" 
+            @click="router.push('/health')"
+            :class="{ 'active': isActive('/health') }"
+          >
+            <el-icon class="nav-icon">
+              <FirstAidKit />
+            </el-icon>
+            <span>健康</span>
+          </span>
+          
+          <span 
+            class="nav-item" 
+            @click="router.push('/travel')"
+            :class="{ 'active': isActive('/travel') }"
+          >
+            <el-icon class="nav-icon">
+              <MapLocation />
+            </el-icon>
+            <span>旅游</span>
           </span>
         </nav>
         

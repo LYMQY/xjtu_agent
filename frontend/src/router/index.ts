@@ -35,6 +35,24 @@ const router = createRouter({
       name: "calendar",
       component: () => import('@/views/CalendarView.vue')
     },
+    // 预算管理
+    {
+      path: "/budget",
+      name: "budget",
+      component: () => import('@/views/BudgetView.vue')
+    },
+    // 健康打卡
+    {
+      path: "/health",
+      name: "health",
+      component: () => import('@/views/HealthView.vue')
+    },
+    // 旅游规划
+    {
+      path: "/travel",
+      name: "travel",
+      component: () => import('@/views/TravelView.vue')
+    },
     //主页
     {
       path: "/dashboard",
