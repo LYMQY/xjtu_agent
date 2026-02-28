@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import DBTrip
 from datetime import datetime, timedelta
+from thread_local import get_current_username
 import json
 
 engine = create_engine("sqlite:///./users.db")
@@ -10,7 +11,6 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @tool
 def save_trip(
-    user_id: str,
     destination: str,
     days: int,
     budget: float,
@@ -23,7 +23,6 @@ def save_trip(
     保存旅行计划。
     
     参数:
-        user_id: 用户ID（学号）
         destination: 目的地
         days: 天数
         budget: 预算（元）
@@ -35,6 +34,10 @@ def save_trip(
     返回:
         成功消息
     """
+    user_id = get_current_username()
+    if not user_id:
+        return "错误：未获取到用户信息，请先登录"
+    
     db = SessionLocal()
     try:
         end_date = None
@@ -62,17 +65,20 @@ def save_trip(
         db.close()
 
 @tool
-def get_my_trips(user_id: str, status: str = None) -> str:
+def get_my_trips(status: str = None) -> str:
     """
     获取用户的旅行计划列表。
     
     参数:
-        user_id: 用户ID（学号）
         status: 状态筛选 (planning/upcoming/completed/cancelled)
     
     返回:
         JSON格式的旅行计划列表
     """
+    user_id = get_current_username()
+    if not user_id:
+        return "错误：未获取到用户信息，请先登录"
+    
     db = SessionLocal()
     try:
         query = db.query(DBTrip).filter(DBTrip.user_id == user_id)

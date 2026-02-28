@@ -19,8 +19,8 @@
             <div class="auth-content">
               <!-- 品牌标识 -->
               <div class="auth-brand">
-                <h1 class="brand-title">交小荣AI助手</h1>
-                <p class="brand-slogan">智能教务，一键触达</p>
+                <h1 class="brand-title">AI UniStudent</h1>
+                <p class="brand-slogan">智能生活，一键触达</p>
               </div>
               
               <!-- 表单卡片 -->

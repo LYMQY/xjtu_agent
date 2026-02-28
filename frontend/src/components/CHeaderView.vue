@@ -20,7 +20,7 @@ const logoImgClickHandle = () => {
 
 // 返回处理
 const return_chat = () => {
-    router.push("/LaiChat"); 
+    router.push("/home"); 
 };
 </script>
 

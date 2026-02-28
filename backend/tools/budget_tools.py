@@ -65,17 +65,20 @@ def get_expenses(
 
 # ========== Tool 2: 获取预算统计 ==========
 @tool
-def get_budget_stats(user_id: str, month: str = None) -> str:
+def get_budget_stats(month: str = None) -> str:
     """
     获取月度预算统计。
     
     参数:
-        user_id: 用户ID（学号）
         month: 月份，格式 YYYY-MM，默认当前月
     
     返回:
         JSON格式的统计数据
     """
+    user_id = get_current_username()
+    if not user_id:
+        return "错误：未获取到用户信息，请先登录"
+    
     db = SessionLocal()
     try:
         if not month:
@@ -118,7 +121,6 @@ def get_budget_stats(user_id: str, month: str = None) -> str:
 # ========== Tool 3: 添加消费记录 ==========
 @tool
 def add_expense(
-    user_id: str,
     amount: float,
     category: str,
     date: str = None,
@@ -128,7 +130,6 @@ def add_expense(
     添加消费记录。
     
     参数:
-        user_id: 用户ID（学号）
         amount: 金额（元）
         category: 消费分类
         date: 日期，格式 YYYY-MM-DD，默认今天
@@ -137,6 +138,10 @@ def add_expense(
     返回:
         成功消息
     """
+    user_id = get_current_username()
+    if not user_id:
+        return "错误：未获取到用户信息，请先登录"
+    
     db = SessionLocal()
     try:
         if not date:
@@ -157,18 +162,21 @@ def add_expense(
 
 # ========== Tool 4: 设置预算 ==========
 @tool
-def set_budget(user_id: str, amount: float, month: str = None) -> str:
+def set_budget(amount: float, month: str = None) -> str:
     """
     设置月度预算。
     
     参数:
-        user_id: 用户ID（学号）
         amount: 预算金额（元）
         month: 月份，格式 YYYY-MM，默认当前月
     
     返回:
         成功消息
     """
+    user_id = get_current_username()
+    if not user_id:
+        return "错误：未获取到用户信息，请先登录"
+    
     db = SessionLocal()
     try:
         if not month:

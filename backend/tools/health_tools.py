@@ -3,13 +3,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import DBHealthCheckin
 from datetime import datetime, timedelta
+from thread_local import get_current_username
 
 engine = create_engine("sqlite:///./users.db")
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @tool
 def health_checkin(
-    user_id: str,
     date: str = None,
     sleep_time: str = None,
     wake_time: str = None,
@@ -23,7 +23,6 @@ def health_checkin(
     健康打卡。
     
     参数:
-        user_id: 用户ID（学号）
         date: 日期，格式 YYYY-MM-DD，默认今天
         sleep_time: 入睡时间 HH:MM
         wake_time: 起床时间 HH:MM
@@ -36,6 +35,10 @@ def health_checkin(
     返回:
         成功/更新消息
     """
+    user_id = get_current_username()
+    if not user_id:
+        return "错误：未获取到用户信息，请先登录"
+    
     db = SessionLocal()
     try:
         if not date:
@@ -92,17 +95,20 @@ def health_checkin(
         db.close()
 
 @tool
-def get_health_records(user_id: str, days: int = 30) -> str:
+def get_health_records(days: int = 30) -> str:
     """
     获取健康打卡记录。
     
     参数:
-        user_id: 用户ID（学号）
         days: 查询天数，默认30
     
     返回:
         JSON格式的记录列表
     """
+    user_id = get_current_username()
+    if not user_id:
+        return "错误：未获取到用户信息，请先登录"
+    
     db = SessionLocal()
     try:
         end_date = datetime.now().strftime("%Y-%m-%d")
@@ -128,17 +134,20 @@ def get_health_records(user_id: str, days: int = 30) -> str:
         db.close()
 
 @tool
-def get_health_stats(user_id: str, days: int = 30) -> str:
+def get_health_stats(days: int = 30) -> str:
     """
     获取健康统计数据。
     
     参数:
-        user_id: 用户ID（学号）
         days: 统计天数，默认30
     
     返回:
         JSON格式的统计数据
     """
+    user_id = get_current_username()
+    if not user_id:
+        return "错误：未获取到用户信息，请先登录"
+    
     db = SessionLocal()
     try:
         end_date = datetime.now().strftime("%Y-%m-%d")
